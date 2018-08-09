@@ -2,8 +2,6 @@
  * Minimal wrappers to allow compiling kni on older kernels.
  */
 
-#include <linux/version.h>
-
 #ifndef RHEL_RELEASE_VERSION
 #define RHEL_RELEASE_VERSION(a, b) (((a) << 8) + (b))
 #endif
@@ -68,8 +66,4 @@
 	(RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(6, 8)) && \
 	(LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 34)))
 #undef NET_NAME_UNKNOWN
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
-#define HAVE_SIGNAL_FUNCTIONS_OWN_HEADER
 #endif
