@@ -67,6 +67,8 @@ enum {
 	OPT_NO_HPET_NUM,
 #define OPT_NO_HUGE           "no-huge"
 	OPT_NO_HUGE_NUM,
+#define OPT_DAX_HUGE           "dax-huge"
+	OPT_DAX_HUGE_NUM,
 #define OPT_NO_PCI            "no-pci"
 	OPT_NO_PCI_NUM,
 #define OPT_NO_SHCONF         "no-shconf"

@@ -851,6 +851,10 @@ eal_parse_common_option(int opt, const char *optarg,
 		conf->no_hugetlbfs = 1;
 		break;
 
+	case OPT_DAX_HUGE_NUM:
+		conf->dax_hugepages = 1;
+		break;
+
 	case OPT_NO_PCI_NUM:
 		conf->no_pci = 1;
 		break;

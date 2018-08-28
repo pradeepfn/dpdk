@@ -86,6 +86,8 @@ struct internal_config {
 
 	unsigned num_hugepage_sizes;      /**< how many sizes on this system */
 	struct hugepage_info hugepage_info[MAX_HUGEPAGE_SIZES];
+	/* hugepage dax */
+	volatile unsigned dax_hugepages; /* set true to enablle pmem based huge pages */
 };
 extern struct internal_config internal_config; /**< Global EAL configuration. */
 
