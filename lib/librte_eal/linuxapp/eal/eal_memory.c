@@ -951,7 +951,9 @@ rte_eal_hugepage_init(void)
 	int i, j, new_memseg;
 	int nr_hugefiles, nr_hugepages = 0;
 	void *addr;
-
+	RTE_LOG(DEBUG, EAL, "%s(): DEBUG hugepage init\n",__func__);
+	RTE_LOG(INFO, EAL, "%s(): INFO  hugepage init\n",__func__);
+	printf("i cant get debug logs to work\n");
 	test_proc_pagemap_readable();
 
 	memset(used_hp, 0, sizeof(used_hp));
@@ -961,6 +963,8 @@ rte_eal_hugepage_init(void)
 
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
+		RTE_LOG(DEBUG, EAL, "%s(): DEBUG mapping malloc pages\n",__func__);
+		RTE_LOG(INFO, EAL, "%s(): INFO mapping  malloc pages\n",__func__);
 		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		if (addr == MAP_FAILED) {
@@ -978,7 +982,8 @@ rte_eal_hugepage_init(void)
 #define MAPPED_SIZE 2UL*1024*1024  
 	if(internal_config.dax_hugepages){
 		int fd;
-
+		RTE_LOG(DEBUG, EAL, "%s(): DEBUG mapping dax huge-pages\n",__func__);
+		RTE_LOG(INFO, EAL, "%s(): INFO mapping dax huge-pages\n",__func__);
 		// try create file on persistent-fs backed by huge-pages
 		fd = open("/mnt/pmem0p1/rte_dax_dpdk", O_CREAT|O_RDWR,0600);
 		if(fd < 0){

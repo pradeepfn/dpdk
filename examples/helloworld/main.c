@@ -60,10 +60,10 @@ main(int argc, char **argv)
 	int ret;
 	unsigned lcore_id;
 
+	//rte_set_log_level(RTE_LOG_DEBUG);
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_panic("Cannot init EAL\n");
-
 	/* call lcore_hello() on every slave lcore */
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		rte_eal_remote_launch(lcore_hello, NULL, lcore_id);
