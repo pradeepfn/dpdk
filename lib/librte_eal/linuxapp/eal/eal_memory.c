@@ -977,11 +977,12 @@ rte_eal_hugepage_init(void)
 		mcfg->memseg[0].socket_id = 0;
 		return 0;
 	}
+#define DAX_FILE_PATH "/mnt/pmem0p1/rte_dax_dpdk"
 	if(internal_config.dax_hugepages){
 		int fd;
 		RTE_LOG(DEBUG, EAL, "%s(): DEBUG mapping dax huge-pages\n",__func__);
 		// try create file on persistent-fs backed by huge-pages
-		fd = open("/mnt/pmem0p1/rte_dax_dpdk", O_CREAT|O_RDWR,0600);
+		fd = open(DAX_FILE_PATH, O_CREAT|O_RDWR,0600);
 		if(fd < 0){
 			RTE_LOG(DEBUG, EAL, "%s(): dax file open failed: %s\n", __func__, 
 					strerror(errno));
@@ -1008,6 +1009,11 @@ rte_eal_hugepage_init(void)
 		mcfg->memseg[0].len = internal_config.memory;
 		mcfg->memseg[0].socket_id = 0;
 		close(fd);
+		//free the hugepage backing dax file, the reference will be gone after unmap/application close
+		if (unlink(DAX_FILE_PATH)) {
+			  RTE_LOG(WARNING, EAL, "%s(): Removing %s failed: %s\n",
+						__func__, DAX_FILE_PATH, strerror(errno));
+		}
 		return 0;
 	}
 /* check if app runs on Xen Dom0 */
