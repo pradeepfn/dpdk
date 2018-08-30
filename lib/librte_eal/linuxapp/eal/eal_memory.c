@@ -952,7 +952,6 @@ rte_eal_hugepage_init(void)
 	int nr_hugefiles, nr_hugepages = 0;
 	void *addr;
 	RTE_LOG(DEBUG, EAL, "%s(): DEBUG hugepage init\n",__func__);
-	RTE_LOG(INFO, EAL, "%s(): INFO  hugepage init\n",__func__);
 	printf("i cant get debug logs to work\n");
 	test_proc_pagemap_readable();
 
@@ -964,7 +963,6 @@ rte_eal_hugepage_init(void)
 	/* hugetlbfs can be disabled */
 	if (internal_config.no_hugetlbfs) {
 		RTE_LOG(DEBUG, EAL, "%s(): DEBUG mapping malloc pages\n",__func__);
-		RTE_LOG(INFO, EAL, "%s(): INFO mapping  malloc pages\n",__func__);
 		addr = mmap(NULL, internal_config.memory, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		if (addr == MAP_FAILED) {
@@ -979,11 +977,9 @@ rte_eal_hugepage_init(void)
 		mcfg->memseg[0].socket_id = 0;
 		return 0;
 	}
-#define MAPPED_SIZE 2UL*1024*1024  
 	if(internal_config.dax_hugepages){
 		int fd;
 		RTE_LOG(DEBUG, EAL, "%s(): DEBUG mapping dax huge-pages\n",__func__);
-		RTE_LOG(INFO, EAL, "%s(): INFO mapping dax huge-pages\n",__func__);
 		// try create file on persistent-fs backed by huge-pages
 		fd = open("/mnt/pmem0p1/rte_dax_dpdk", O_CREAT|O_RDWR,0600);
 		if(fd < 0){
@@ -992,24 +988,24 @@ rte_eal_hugepage_init(void)
 			return -1;
 		}
 		//MAP_POPULATE only supported for private mappings, hence pre-allocate using fallocate
-		int ret = fallocate(fd,0,0,MAPPED_SIZE);
+		int ret = fallocate(fd,0,0,internal_config.memory);
 		if(ret < 0){
 			RTE_LOG(DEBUG, EAL, "%s(): dax file fallocate failed: %s\n",__func__,
 					strerror(errno));
 			return -1;
 		}
 
-		addr = mmap(NULL,MAPPED_SIZE,PROT_READ| PROT_WRITE,
-				MAP_SHARED,fd,0);
+		addr = mmap(NULL,internal_config.memory,PROT_READ| PROT_WRITE,
+				MAP_PRIVATE,fd,0);
 		if(addr == MAP_FAILED){
 			RTE_LOG(DEBUG,EAL,"%s: dax_mmap() failed: %s\n", __func__,strerror(errno));
 			close(fd);
 			return -1;
 		}
-		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
+		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr; // physical address is wrong
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].hugepage_sz = RTE_PGSIZE_2M;
-		mcfg->memseg[0].len = MAPPED_SIZE; //internal_config.dax_memory
+		mcfg->memseg[0].len = internal_config.memory;
 		mcfg->memseg[0].socket_id = 0;
 		close(fd);
 		return 0;
