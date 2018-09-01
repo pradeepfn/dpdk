@@ -436,6 +436,13 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 					strerror(errno));
 			return i;
 		}
+		int ret = fallocate(fd,0,0,hugepage_sz);
+		if(ret < 0){
+			RTE_LOG(DEBUG, EAL, "%s(): hugepage file fallocate failed: %s\n",__func__,
+					strerror(errno));
+			close(fd);
+			return i;
+		}
 
 		/* map the segment, and populate page tables,
 		 * the kernel fills this segment with zeros */
@@ -514,6 +521,7 @@ unmap_all_hugepages_orig(struct hugepage_file *hugepg_tbl, struct hugepage_info 
 static int
 find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 {
+#ifndef PMEM_HUGE
 	int socket_id;
 	char *end, *nodestr;
 	unsigned i, hp_count = 0;
@@ -587,6 +595,9 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 error:
 	fclose(f);
 	return -1;
+#else
+	return 0;
+#endif
 }
 
 static int
@@ -952,7 +963,6 @@ rte_eal_hugepage_init(void)
 	int nr_hugefiles, nr_hugepages = 0;
 	void *addr;
 	RTE_LOG(DEBUG, EAL, "%s(): DEBUG hugepage init\n",__func__);
-	printf("i cant get debug logs to work\n");
 	test_proc_pagemap_readable();
 
 	memset(used_hp, 0, sizeof(used_hp));
@@ -1070,6 +1080,7 @@ rte_eal_hugepage_init(void)
 		/* map all hugepages available */
 		pages_old = hpi->num_pages[0];
 		pages_new = map_all_hugepages(&tmp_hp[hp_offset], hpi, 1);
+		RTE_LOG(DEBUG,EAL,"%s(), pages_old : %d, pages_new : %d \n",__func__,pages_old,pages_new);
 		if (pages_new < pages_old) {
 			RTE_LOG(DEBUG, EAL,
 				"%d not %d hugepages of size %u MB allocated\n",

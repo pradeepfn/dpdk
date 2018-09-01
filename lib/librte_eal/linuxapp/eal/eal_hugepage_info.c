@@ -66,6 +66,7 @@ static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
 static uint32_t
 get_num_hugepages(const char *subdir)
 {
+#ifndef PMEM_HUGE
 	char path[PATH_MAX];
 	long unsigned resv_pages, num_pages = 0;
 	const char *nr_hp_file = "free_hugepages";
@@ -98,11 +99,15 @@ get_num_hugepages(const char *subdir)
 		num_pages = UINT32_MAX;
 
 	return num_pages;
+#else
+	return 2048;
+#endif
 }
 
 static uint64_t
 get_default_hp_size(void)
 {
+#ifndef PMEM_HUGE
 	const char proc_meminfo[] = "/proc/meminfo";
 	const char str_hugepagesz[] = "Hugepagesize:";
 	unsigned hugepagesz_len = sizeof(str_hugepagesz) - 1;
@@ -122,11 +127,15 @@ get_default_hp_size(void)
 	if (size == 0)
 		rte_panic("Cannot get default hugepage size from %s\n", proc_meminfo);
 	return size;
+#else
+	return 2097152;
+#endif
 }
 
 static const char *
 get_hugepage_dir(uint64_t hugepage_sz)
 {
+#ifndef PMEM_HUGE
 	enum proc_mount_fieldnames {
 		DEVICE = 0,
 		MOUNTPT,
@@ -187,6 +196,12 @@ get_hugepage_dir(uint64_t hugepage_sz)
 
 	fclose(fd);
 	return retval;
+#else
+	if (internal_config.hugepage_dir != NULL){
+		return strdup(internal_config.hugepage_dir);
+	}
+	return NULL;
+#endif
 }
 
 /*
@@ -276,6 +291,7 @@ compare_hpi(const void *a, const void *b)
 int
 eal_hugepage_info_init(void)
 {
+#ifndef PMEM_HUGE
 	const char dirent_start_text[] = "hugepages-";
 	const size_t dirent_start_len = sizeof(dirent_start_text) - 1;
 	unsigned i, num_sizes = 0;
@@ -283,6 +299,7 @@ eal_hugepage_info_init(void)
 	struct dirent *dirent;
 
 	dir = opendir(sys_dir_path);
+	RTE_LOG(DEBUG,EAL,"%s(): sys_dir_path : %s\n",__func__,sys_dir_path);
 	if (dir == NULL)
 		rte_panic("Cannot open directory %s to read system hugepage "
 			  "info\n", sys_dir_path);
@@ -291,8 +308,10 @@ eal_hugepage_info_init(void)
 		struct hugepage_info *hpi;
 
 		if (strncmp(dirent->d_name, dirent_start_text,
-			    dirent_start_len) != 0)
+			    dirent_start_len) != 0){
+			RTE_LOG(DEBUG,EAL,"%s(): dirent->d_name : %s\n",__func__,sys_dir_path);
 			continue;
+		}
 
 		if (num_sizes >= MAX_HUGEPAGE_SIZES)
 			break;
@@ -301,7 +320,6 @@ eal_hugepage_info_init(void)
 		hpi->hugepage_sz =
 			rte_str_to_size(&dirent->d_name[dirent_start_len]);
 		hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
-
 		/* first, check if we have a mountpoint */
 		if (hpi->hugedir == NULL) {
 			uint32_t num_pages;
@@ -362,4 +380,54 @@ eal_hugepage_info_init(void)
 
 	/* no valid hugepage mounts available, return error */
 	return -1;
+#else
+	unsigned i, num_sizes = 0;
+	struct hugepage_info *hpi;
+
+	hpi = &internal_config.hugepage_info[num_sizes];
+	hpi->hugepage_sz = 2097152; // 2MB
+	hpi->hugedir = get_hugepage_dir(hpi->hugepage_sz);
+	uint32_t num_pages;
+	num_pages = get_num_hugepages((char *)NULL);
+	if (num_pages > 0)
+		RTE_LOG(NOTICE, EAL,
+			"%" PRIu32 " hugepages of size "
+			"%" PRIu64 " reserved, but no mounted \n",
+			num_pages, hpi->hugepage_sz);
+
+	/* try to obtain a writelock */
+	hpi->lock_descriptor = open(hpi->hugedir, O_RDONLY);
+
+	/* if blocking lock failed */
+	if (flock(hpi->lock_descriptor, LOCK_EX) == -1) {
+		RTE_LOG(CRIT, EAL,
+			"Failed to lock hugepage directory!\n");
+		return -1;
+	}
+	/* clear out the hugepages dir from unused pages */
+	if (clear_hugedir(hpi->hugedir) == -1)
+		return -1;
+
+	/* for now, put all pages into socket 0,
+	* later they will be sorted */
+	hpi->num_pages[0] = get_num_hugepages((char *)NULL);
+	num_sizes++;
+
+
+	internal_config.num_hugepage_sizes = num_sizes;
+
+	/* sort the page directory entries by size, largest to smallest */
+	qsort(&internal_config.hugepage_info[0], num_sizes,
+	      sizeof(internal_config.hugepage_info[0]), compare_hpi);
+
+	/* now we have all info, check we have at least one valid size */
+	for (i = 0; i < num_sizes; i++)
+		if (internal_config.hugepage_info[i].hugedir != NULL &&
+		    internal_config.hugepage_info[i].num_pages[0] > 0)
+			return 0;
+
+	/* no valid hugepage mounts available, return error */
+	return -1;
+
+#endif
 }
