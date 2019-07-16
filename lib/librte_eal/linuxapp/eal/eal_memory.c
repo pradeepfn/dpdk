@@ -596,7 +596,7 @@ error:
 	fclose(f);
 	return -1;
 #else
-	return 0;
+	return 0; // we map pages from NUMA0 bound file-system destination
 #endif
 }
 
@@ -684,6 +684,29 @@ unlink_hugepage_files(struct hugepage_file *hugepg_tbl,
 	}
 	return 0;
 }
+
+#ifdef PMEM_HUGE
+
+static void 
+dump_hugepage_info(struct hugepage_file *hugepage_tbl, int nrpages){
+	int page;
+	FILE *fptr = fopen("blizzard_pagemap.out", "w");
+	fprintf(fptr, "numa, filepath, size, vir_addr, phy_addr\n");	
+	for(page = 0; page < nrpages; page++){
+		struct hugepage_file *hp = &hugepage_tbl[page];
+		if(hp->final_va != NULL){
+			fprintf(fptr, "%d, %s, %zd , %p, %p \n",hp->socket_id, hp->filepath, hp->size, (void *)hp->final_va, (void *)hp->physaddr);	
+		}
+	}
+	RTE_LOG(INFO, EAL, "Blizzard page map written to, blizzard_pagemap.out \n");
+	fclose(fptr);
+}
+
+#endif
+
+
+
+
 
 /*
  * unmaps hugepages that are not going to be used. since we originally allocate
@@ -1214,6 +1237,12 @@ rte_eal_hugepage_init(void)
 		goto fail;
 	}
 
+#ifdef PMEM_HUGE
+	/* dump hugepage info, includeing backing file, virtual and phy. addr details.
+	 * We use this info for blizzard recovery
+	 */
+	dump_hugepage_info(tmp_hp, nr_hugefiles);	
+#endif	
 	/* free the hugepage backing files */
 	if (internal_config.hugepage_unlink &&
 		unlink_hugepage_files(tmp_hp, internal_config.num_hugepage_sizes) < 0) {
