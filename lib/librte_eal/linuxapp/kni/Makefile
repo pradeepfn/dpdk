@@ -42,7 +42,8 @@ MODULE = rte_kni
 MODULE_CFLAGS += -I$(SRCDIR) --param max-inline-insns-single=50
 MODULE_CFLAGS += -I$(RTE_OUTPUT)/include -I$(SRCDIR)/ethtool/ixgbe -I$(SRCDIR)/ethtool/igb
 MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
-MODULE_CFLAGS += -Wall -Werror
+#MODULE_CFLAGS += -Wall -Werror
+MODULE_CFLAGS += -Wall
 
 ifeq ($(shell lsb_release -si 2>/dev/null),Ubuntu)
 MODULE_CFLAGS += -DUBUNTU_RELEASE_CODE=$(shell lsb_release -sr | tr -d .)
